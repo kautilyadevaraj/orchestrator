@@ -1,0 +1,588 @@
+AI BUILD SPRINT
+Goal-to-Multi-Agent Insurance Claim Orchestrator
+Revised Build Plan — Google ADK Python Stack
+Version 2.0  |  Replaces Flowise + Make.com with Google ADK + Next.js
+🔄 What Changed from v1.0 (Flowise) to v2.0 (ADK Python)
+Flowise visual canvas → Google ADK Python agents (LlmAgent, SequentialAgent, ParallelAgent)
+Make.com automation loop → Python batch runner with async support
+Google Sheets trigger → Next.js claim submission form → FastAPI endpoint → ADK pipeline
+Retool/Softr dashboard → Next.js dashboard with real-time workflow log display
+All agent logic, decision gates, ClaimContext schema, and output format remain identical to v1.0
+PART A
+ADK System Architecture
+How each component maps to Google ADK primitives
+1. Why Google ADK Over Flowise
+Google ADK (Agent Development Kit) is a Python-native framework that gives granular control over agent execution, state management, and branching logic — things that required workarounds in Flowise's visual canvas. The agent design, decision gates, ClaimContext schema, and all six specialist agents remain architecturally identical. ADK simply replaces the visual wiring with explicit, testable Python.
+Capability
+Flowise (v1.0)
+ADK Python (v2.0)
+Parallel execution
+Parallel branch node (visual)
+ParallelAgent wrapping Agent 2 + 3
+Decision gates
+IF-node / conditional branch
+Custom BaseAgent subclass — pure Python logic
+State passing
+Flowise context object
+ADK session.state dict — typed via Pydantic
+Agent prompts
+Named variable in node UI
+Python string constants in prompts.py module
+Error handling
+Flowise retry setting
+Python try/except with retry decorator per agent
+Batch processing
+Make.com scenario loop
+Python async runner with asyncio.gather
+Debugging
+Flowise trace panel
+Python logging + structured JSON log files
+Vision (Agent 4)
+Flowise Vision LLM Node
+Gemini multimodal content block in LlmAgent
+2. ADK Primitive Mapping
+Every component in the v1.0 blueprint maps directly to a specific ADK primitive. No component is lost — only the implementation changes.
+v1.0 Component
+ADK Primitive
+Key Configuration
+Input Parser (Utility)
+LlmAgent — input_parser
+output_key = 'claim_context'; structured JSON output enforced
+Orchestrator (Controller)
+SequentialAgent — main_pipeline
+sub_agents list defines execution order; holds all gate agents
+Agent 1 — Claim Analyzer
+LlmAgent — claim_analyzer
+output_key = 'agent1_output'; Gemini 2.5 Flash
+Gate A — Completeness Check
+Custom BaseAgent — gate_a
+Reads agent1_output from session.state; sets pipeline_status if early exit
+Agent 2 — Coverage Validator
+LlmAgent — coverage_validator
+Runs inside ParallelAgent; output_key = 'agent2_output'
+Agent 3 — Fraud Detector
+LlmAgent — fraud_detector
+Runs inside ParallelAgent; output_key = 'agent3_output'
+Parallel block (2+3)
+ParallelAgent — parallel_check
+sub_agents = [coverage_validator, fraud_detector]
+Gate B — Coverage+Fraud Merge
+Custom BaseAgent — gate_b
+Reads both outputs; sets status = Rejected if conditions met
+Agent 4 — Damage Assessor
+LlmAgent — damage_assessor
+Multimodal: image bytes injected into content block; output_key = 'agent4_output'
+Gate C — Image/Text Mismatch
+Custom BaseAgent — gate_c
+Checks image_text_match; applies -0.20 confidence penalty to state
+Agent 5 — Payout Estimator
+LlmAgent — payout_estimator
+output_key = 'agent5_output'; reads confidence_penalty from state
+Agent 6 — Comm. Writer
+LlmAgent — comm_writer
+output_key = 'agent6_output'; reads status + payout from state
+Log Aggregator (Utility)
+Custom BaseAgent — log_aggregator
+Collects all agent outputs; assembles final output JSON
+3. Session State — The ClaimContext in ADK
+In ADK, session.state is the shared dictionary that flows between all agents in a pipeline run — the direct equivalent of the Flowise ClaimContext object. Each agent reads its required inputs from state and writes its output back under its assigned output_key. The state is fully typed via Pydantic models for validation at boundaries.
+3.1  State Keys and Ownership
+State Key
+Written By
+Read By
+Type
+claim_context
+Input Parser
+All agents
+ClaimContext (Pydantic model)
+agent1_output
+Agent 1
+Gate A, Agent 4
+Agent1Output (Pydantic)
+agent2_output
+Agent 2
+Gate B
+Agent2Output (Pydantic)
+agent3_output
+Agent 3
+Gate B, Agent 5
+Agent3Output (Pydantic)
+agent4_output
+Agent 4
+Gate C, Agent 5, Agent 6
+Agent4Output (Pydantic)
+agent5_output
+Agent 5
+Agent 6, Log Aggregator
+Agent5Output (Pydantic)
+agent6_output
+Agent 6
+Log Aggregator
+Agent6Output (Pydantic)
+pipeline_status
+Gate A / Gate B / Gate C
+All downstream agents (skip guard)
+Enum: active | pending | rejected
+confidence_penalty
+Gate C
+Agent 5
+Float (default 0.0, set to -0.20 on mismatch)
+final_output
+Log Aggregator
+API response / frontend
+FinalOutput (Pydantic)
+3.2  Skip Guard Pattern — How Early Exit Works
+When Gate A or Gate B sets pipeline_status to 'pending' or 'rejected', subsequent LlmAgents must not execute. ADK does not natively skip agents in a SequentialAgent, so a before_agent_callback is registered on every downstream LlmAgent. This callback checks pipeline_status in session.state at the start of each agent run. If status is not 'active', the callback returns a pre-built skip response immediately, and the LlmAgent does not make an API call. This is functionally identical to Flowise's conditional routing but fully transparent in code.
+Skip Guard — How It Behaves
+Gate A fires → sets pipeline_status = 'pending' → Agents 2, 3, 4, 5 skip via callback → Agent 6 runs to generate pending message → Log Aggregator assembles output
+Gate B fires (rejected) → sets pipeline_status = 'rejected' → Agents 4, 5 skip → Agent 6 runs for rejection message
+Gate C fires (mismatch) → sets pipeline_status = 'pending' AND confidence_penalty = -0.20 → Agent 5 runs but reads penalty from state
+Only Agent 6 and Log Aggregator run in all paths — every claim gets a customer message and a final output
+PART B
+Project Structure & Module Design
+Directory layout, module responsibilities, and data flow
+4. Repository Structure
+The project is split into three top-level directories: backend (ADK Python pipeline + FastAPI server), frontend (Next.js app), and shared (Pydantic schemas that both sides import or mirror).
+Project Directory Layout
+insurance-orchestrator/
+  ├── backend/
+  │   ├── agents/              ← One file per ADK agent
+  │   ├── gates/               ← Gate A, B, C as custom BaseAgent subclasses
+  │   ├── pipeline/            ← SequentialAgent assembly + runner
+  │   ├── schemas/             ← Pydantic models: ClaimContext, AgentOutputs, FinalOutput
+  │   ├── prompts/             ← System prompt strings as named constants
+  │   ├── utils/               ← Image fetcher, JSON parser, retry decorator, logger
+  │   ├── api/                 ← FastAPI app with /process-claim and /process-batch endpoints
+  │   └── main.py              ← CLI entry point for local testing
+  ├── frontend/
+  │   ├── app/                 ← Next.js App Router pages
+  │   ├── components/          ← ClaimForm, ClaimCard, WorkflowLog, StatusBadge
+  │   ├── lib/                 ← API client, type definitions mirroring Pydantic schemas
+  │   └── public/              ← Static assets
+  └── tests/
+      ├── unit/                ← Per-agent unit tests with mocked LLM responses
+      └── integration/         ← Full pipeline tests with all 5 sample claims
+5. Module Responsibilities
+5.1  agents/ — The Six Specialist Agents
+Each file in this directory defines a single ADK LlmAgent instance. The agent is configured with its model name (gemini-2.5-flash-preview), its system prompt imported from prompts/, its output_key for session state, and its before_agent_callback (the skip guard). Agent 4 has an additional image injection step before the LLM call.
+5.2  gates/ — Decision Gate Agents
+Each gate is a custom class that inherits from ADK's BaseAgent. It overrides the _run_async_impl method, which is a pure Python async function with no LLM call. The gate reads the required keys from ctx.session.state, evaluates the branching logic exactly as specified in the v1.0 blueprint, and writes the result back to state. Gates never produce text output — they only mutate state.
+5.3  pipeline/ — Pipeline Assembly
+The main_pipeline.py file constructs the full SequentialAgent by instantiating all agents and gates in order. The parallel block is a ParallelAgent object inserted at position 4 in the sequence. The runner.py file provides a process_claim(claim_dict) async function that creates a new ADK InMemorySessionService, initializes session state with the parsed ClaimContext, runs the pipeline, and returns the final_output from state.
+5.4  schemas/ — Pydantic Models
+All data contracts are defined here as Pydantic v2 models. ClaimContext holds the raw claim fields. Each AgentNOutput model mirrors exactly the JSON schema specified in the v1.0 agent design. FinalOutput is the top-level output schema including the WorkflowLog. These models serve three purposes: validating LLM JSON output, providing type hints throughout the Python codebase, and generating TypeScript type definitions for the frontend.
+5.5  prompts/ — System Prompts
+All six system prompt strings are stored as named constants in a single prompts.py file. Each prompt is identical to the v1.0 blueprint specification. Keeping prompts separate from agent definitions makes iteration fast: changing a prompt never requires touching agent wiring logic. Prompts are versioned alongside the codebase.
+5.6  api/ — FastAPI Server
+The FastAPI application exposes two endpoints. The /process-claim endpoint accepts a single claim JSON body, runs the ADK pipeline via the runner, and returns the FinalOutput JSON. The /process-batch endpoint accepts an array of claim objects and runs them concurrently using asyncio.gather, returning an array of FinalOutput objects. CORS is configured to allow the Next.js frontend origin.
+PART C
+Agent & Gate Design (ADK-Specific)
+Detailed configuration for each of the nine pipeline components
+6. Input Parser Agent
+The Input Parser is the first LlmAgent in the pipeline. It receives the raw claim JSON from the API request body (already parsed by FastAPI) and its role is to produce a validated, normalized ClaimContext. It checks for null or missing fields, computes an initial completeness assessment, and writes the result to session.state['claim_context']. Because the input is already structured JSON from the Next.js form, the parser primarily enforces the Pydantic schema and catches edge cases like missing policy_type or null claim_amount.
+Property
+Value
+ADK Type
+LlmAgent
+Model
+gemini-2.5-flash-preview
+output_key
+claim_context
+Input source
+Raw claim dict from FastAPI request body
+Output
+Validated ClaimContext JSON written to session state
+Skip guard
+None — always runs, is the first agent
+Error behavior
+If Pydantic validation fails, return 400 to API before pipeline starts
+7. Agent 1 — Claim Analyzer
+Unchanged from v1.0. The system prompt, output schema, and classification rules are identical. The ADK-specific change is that the agent reads claim_context from session.state rather than receiving it as a Flowise context injection, and writes its structured JSON output to agent1_output in state via output_key.
+7.1  Gemini JSON Output Enforcement
+Gemini 2.5 Flash supports a response_schema parameter in the generation config. For all six specialist agents, the Pydantic output model is converted to a JSON Schema dict and passed as response_schema to enforce structured output. This eliminates the need for post-hoc JSON parsing and removes the risk of markdown-wrapped output. This is a significant reliability improvement over Flowise's JSON enforcement via prompt wording alone.
+8. Gate A — Completeness Check
+Gate A is the first custom BaseAgent. It runs immediately after Agent 1 and before the parallel block. It reads agent1_output['completeness_score'] and agent1_output['missing_fields'] from session state. Its logic is pure Python — no LLM call.
+Gate A Logic (Python)
+Read: completeness_score, missing_fields from agent1_output in session.state
+Read: claim_context['policy_type'] and claim_context['claim_amount'] — check for null
+IF completeness_score < 0.5 OR policy_type is None OR claim_amount is None:
+    Set session.state['pipeline_status'] = 'pending'
+    Set session.state['gate_a_reason'] = 'Missing critical fields: ' + missing_fields
+    Set session.state['skip_to_agent6'] = True (Agent 6 still runs to generate pending message)
+ELSE:
+    Set session.state['pipeline_status'] = 'active'
+    Continue to ParallelAgent
+9. Parallel Block — Agents 2 & 3
+The ParallelAgent wraps Agent 2 (Coverage Validator) and Agent 3 (Fraud Detector) and executes them concurrently using asyncio. Both agents receive the same session state snapshot. ADK's ParallelAgent handles the async execution and merges both outputs back into the shared session state. Each agent writes to its own dedicated output_key, so there is no write conflict.
+9.1  Agent 2 — Coverage Validator
+Property
+Value
+ADK Type
+LlmAgent inside ParallelAgent
+Reads from state
+claim_context.policy_type, claim_context.documents_status, agent1_output.damage_type
+output_key
+agent2_output
+Output schema
+{ coverage_valid: bool, validity_reason: str }
+Skip guard
+Checks pipeline_status == 'active' before executing
+9.2  Agent 3 — Fraud Detector
+Property
+Value
+ADK Type
+LlmAgent inside ParallelAgent
+Reads from state
+claim_context.claim_amount, claim_context.past_claims, agent1_output.damage_type, claim_context.documents_status
+output_key
+agent3_output
+Output schema
+{ fraud_risk: 'low'|'medium'|'high', fraud_flags: list[str], fraud_score: float }
+Skip guard
+Checks pipeline_status == 'active' before executing
+10. Gate B — Coverage + Fraud Merge
+Gate B reads the outputs of both parallel agents and applies the rejection and routing logic. It is the most consequential gate in the pipeline. Its logic maps exactly to the v1.0 specification.
+Gate B Logic (Python)
+Read: agent2_output['coverage_valid'], agent2_output['validity_reason']
+Read: agent3_output['fraud_risk'], agent3_output['fraud_flags']
+IF coverage_valid == False:
+    pipeline_status = 'rejected'
+    gate_b_reason = validity_reason from Agent 2
+    skip Agents 4 and 5; Agent 6 runs with rejection context
+ELSE IF fraud_risk == 'high':
+    pipeline_status = 'rejected'
+    gate_b_reason = 'Fraud indicators: ' + fraud_flags
+    skip Agents 4 and 5; Agent 6 runs with rejection context
+ELSE IF fraud_risk == 'medium':
+    pipeline_status = 'pending' (soft flag — does NOT skip Agent 4 or 5)
+    gate_b_reason = 'Flagged for manual review: ' + fraud_flags
+    confidence_base_penalty = -0.15 written to state
+    Continue to Agent 4
+ELSE (coverage valid + fraud low):
+    pipeline_status = 'active'
+    Continue to Agent 4
+11. Agent 4 — Damage Assessor (Vision)
+Agent 4 is the only multimodal agent. In ADK, the LlmAgent content block supports mixed text and image input natively for Gemini models. The image handling strategy is described in detail in Part D. The agent's skip guard checks if pipeline_status is 'rejected' — if so, it returns immediately without making an API call.
+Property
+Value
+ADK Type
+LlmAgent with multimodal content block
+Model
+gemini-2.5-flash-preview (supports vision natively)
+Image input
+Fetched/encoded in utils/image_handler.py before agent runs; injected as Part(inline_data=...)
+Reads from state
+claim_context.description, agent1_output.damage_type, claim_context.image_url
+output_key
+agent4_output
+Output schema
+{ confirmed_damage_type: str, image_text_match: bool|None, mismatch_detail: str|None }
+No-image behavior
+If image_url is null, image_text_match is set to null; no mismatch penalty
+12. Gate C — Image / Text Mismatch
+Gate C Logic (Python)
+Read: agent4_output['image_text_match']
+Read: claim_context['image_url'] (to confirm an image was actually provided)
+IF image_text_match == False AND image_url is not None:
+    pipeline_status = 'pending' (overrides 'active' but does NOT skip Agent 5)
+    confidence_penalty = -0.20 written to state
+    gate_c_reason = agent4_output['mismatch_detail']
+    Agent 6 will include clarification request in customer message
+ELSE (match == True OR no image provided):
+    No state changes; pipeline_status unchanged
+    confidence_penalty remains 0.0 (or carries forward Gate B penalty if medium fraud)
+13. Agent 5 — Payout Estimator
+Agent 5 reads the confirmed_damage_type from Agent 4, the fraud_risk from Agent 3, and the total confidence_penalty accumulated from Gates B and C in session state. It applies the payout range rules and deductible exactly as specified in v1.0. The confidence score it produces is computed as: base_confidence (0.90) + all accumulated penalties from state.
+13.1  Confidence Score Accumulation Across Gates
+Condition
+Penalty Applied By
+State Key
+Medium fraud risk
+Gate B
+confidence_penalty -= 0.15
+Image / text mismatch
+Gate C
+confidence_penalty -= 0.20
+Missing documents
+Gate B (via Agent 2)
+confidence_penalty -= 0.15
+Completeness score < 0.80
+Gate A (soft)
+confidence_penalty -= 0.10
+High fraud (rejection path)
+Gate B — Agent 5 skipped
+N/A — pipeline exits
+14. Agent 6 — Communication Writer
+Agent 6 runs in all exit paths — Approved, Rejected, and Pending. It reads the pipeline_status, the assembled reason (from whichever gate fired), the final_payout from Agent 5 (or zero if Agent 5 was skipped), and the claim_id. Its system prompt and 150-word rule are unchanged from v1.0. The skip guard on Agent 6 is set to 'never skip' — it is the final human-facing step and must always produce a message.
+15. Log Aggregator
+The Log Aggregator is the final custom BaseAgent. It is pure Python with no LLM call. It reads all agent output keys from session.state and assembles the FinalOutput Pydantic model. The FinalOutput is written back to state under 'final_output' and is the return value of the runner.process_claim() function. The FastAPI endpoint serializes this model to JSON and returns it to the Next.js frontend.
+PART D
+Image Handling, Error Strategy & Batch Processing
+Vision pipeline, fault tolerance, and multi-claim execution
+16. Image Handling Pipeline
+Because images now come from a Next.js form rather than a Google Sheet URL, the handling strategy changes slightly from v1.0 but the semantics are identical: Agent 4 receives either the image content or a 'not provided' signal.
+16.1  Image Input Options from the Frontend
+Option A — URL input: User pastes a public image URL in the claim form. The frontend sends the URL string in the claim JSON. The backend image_handler.py fetches the URL, validates the content type, and encodes it as base64 before injecting into the Agent 4 content block.
+Option B — File upload: User uploads an image file directly in the form. Next.js sends it as a multipart form field. FastAPI extracts the bytes, validates the MIME type, and passes the raw bytes to image_handler.py for base64 encoding.
+Option C — No image: The image field is null or absent. image_handler.py returns None. Agent 4 receives the text-only content block. image_text_match is set to null — no mismatch penalty, no Gate C trigger.
+16.2  Image Safety Checks in image_handler.py
+Maximum file size check: 5MB limit enforced before encoding
+MIME type whitelist: Only image/jpeg, image/png, image/webp accepted
+Fetch timeout: 10-second timeout on URL fetch; failure treated as no image provided
+Encoding: Converted to base64 string; injected as Gemini inline_data Part
+17. Error Handling Strategy
+ADK's reliability requirements from the v1.0 SRS (NFR-02: 2 retries per agent, NFR-03: safe default on malformed JSON) are implemented at the Python level with explicit mechanisms.
+17.1  Retry Decorator
+A custom retry decorator in utils/retry.py wraps each LlmAgent's LLM call. It catches google.api_core.exceptions.DeadlineExceeded, google.api_core.exceptions.ServiceUnavailable, and any HTTP 429 (rate limit) response. It retries up to 2 times with exponential backoff (1s, 2s). On third failure, it raises a PipelineAgentError with the agent name and claim ID, which the FastAPI handler catches and returns as a 503 response to the frontend.
+17.2  JSON Parse Failure Handling
+Even with Gemini's response_schema enforcement, a parse failure is handled by a safe_parse utility function. If the returned string cannot be parsed into the expected Pydantic model, the function logs the raw response, constructs a default safe output for that agent (e.g., fraud_risk='medium' for Agent 3, coverage_valid=False for Agent 2), writes it to session state, and allows the pipeline to continue. This satisfies NFR-03 and ensures a claim is never silently lost.
+18. Batch Processing
+The v1.0 Make.com scenario loop is replaced by the /process-batch FastAPI endpoint. The endpoint receives an array of claim objects, creates an independent runner task for each, and executes them concurrently with asyncio.gather. Because each claim gets its own ADK InMemorySessionService instance, there is zero shared state between concurrent claim executions. Results are returned as an ordered array corresponding to the input order.
+Batch Execution Details
+Concurrency: asyncio.gather runs all claims simultaneously up to the Gemini API rate limit
+Rate limit handling: If a 429 is received during batch, the retry decorator backs off per-agent; other claims in the batch are unaffected
+Result ordering: Results array preserves input order regardless of which claim finishes first
+Partial failure: If one claim's pipeline raises an unrecoverable error, its result slot contains an error object; other claims complete normally
+Performance expectation: 5 test claims processed in approximately 10–20 seconds total (parallelism within each claim + across claims)
+PART E
+Next.js Frontend Plan
+Claim submission form, dashboard, and workflow log display
+19. Frontend Architecture Overview
+The Next.js app has two primary views: the Claim Submission page where users enter or batch-upload claims, and the Results Dashboard where they see per-claim decisions with full workflow log drill-down. The frontend communicates with the FastAPI backend via a typed API client in lib/api.ts. TypeScript interfaces in lib/types.ts mirror the Pydantic schemas from the backend.
+Page / Route
+Purpose
+Key Components
+/  (Home)
+Landing + navigation
+Navigation to Submit and Dashboard
+/submit
+Claim submission form
+ClaimForm, ImageUpload, SubmitButton, ValidationErrors
+/submit/batch
+Multi-claim JSON upload
+JSONDropzone, ClaimPreviewTable, BatchSubmitButton
+/results
+Results dashboard
+ClaimTable with filters, StatusBadge, ConfidenceMeter
+/results/[claimId]
+Per-claim detail view
+ClaimCard, WorkflowLogPanel, AgentOutputAccordion
+20. Claim Submission Form (/submit)
+This is the primary input interface replacing Google Sheets. The form captures all required claim fields and converts them to the ClaimContext JSON expected by the backend API.
+20.1  Form Fields
+Claim ID: Text input with auto-generate option (UUID or sequential)
+Description: Textarea with character count (minimum 20 characters)
+Policy Type: Radio or Select — 'Comprehensive' or 'Third-Party' only
+Claim Amount (₹): Numeric input with INR formatting; minimum ₹1
+Past Claims: Numeric stepper (0–99); defaults to 0
+Documents Status: Toggle or Select — 'Complete' or 'Missing'
+Image: Optional — file upload (JPEG/PNG) OR URL text input, mutually exclusive
+20.2  Form Validation Before Submission
+Client-side Zod schema validation mirrors Pydantic model constraints
+Required fields: Claim ID, Description, Policy Type, Claim Amount, Documents Status
+Numeric bounds: Claim Amount > 0, Past Claims >= 0
+Image: If URL provided, validated as a well-formed URL string
+On validation error: Inline field-level error messages; submit button disabled
+20.3  Submission Flow
+On valid submit: Form data serialized to ClaimContext JSON
+If image file uploaded: File converted to base64 or sent as multipart; URL sent as string
+POST to /api/process-claim (Next.js API route proxying to FastAPI backend)
+Loading state: Submit button shows spinner; form inputs disabled during processing
+On success: User redirected to /results/[claimId] showing the result
+On error: Toast notification with error message; form remains filled
+21. Results Dashboard (/results)
+The dashboard shows all claims processed in the current session (stored in browser state or a lightweight in-memory store on the Next.js server). For the hackathon demo, this is sufficient — no database is required.
+21.1  Claims Table
+Columns: Claim ID, Status (color-coded badge), Estimated Payout, Confidence Score (progress bar), Damage Type, Processing Time
+Status badges: Green = Approved, Red = Rejected, Amber = Pending
+Filters: Filter by Status (All / Approved / Rejected / Pending), sort by Confidence Score or Claim Amount
+Row click: Navigates to /results/[claimId] detail view
+21.2  Per-Claim Detail View (/results/[claimId])
+This is the explainability showcase — the most important page for the hackathon evaluation.
+Top section: ClaimCard showing final Status, Payout, Confidence Score, and Reason summary
+Workflow Timeline: Visual step-by-step timeline showing which agents ran, which gates fired, and where the pipeline branched — each step is a clickable accordion
+Agent Output Accordions: Expanding each agent step reveals the raw JSON output for that agent (color-formatted), satisfying the explainability requirement
+Gate Decisions: Gates A, B, C shown as decision nodes in the timeline with the condition that was evaluated and the outcome
+Customer Message: Displayed in a message bubble UI styled as an email/notification
+Image Section: If an image was provided, shows the uploaded image alongside Agent 4's mismatch assessment
+21.3  Batch Results View (/submit/batch)
+Accepts a JSON file upload containing an array of claim objects
+Preview table shows all claims before submission with row validation highlighting
+On submit: calls /api/process-batch; shows a progress indicator per claim
+Results displayed in the same dashboard table after all claims complete
+Export button: Downloads all results as a JSON file for submission
+PART F
+API Layer, Testing & Sample Claims
+FastAPI integration, test strategy, and the five required test cases
+22. FastAPI — Backend API Design
+22.1  Endpoints
+Method
+Endpoint
+Request Body
+Response Body
+Description
+POST
+/process-claim
+ClaimContext JSON
+FinalOutput JSON
+Single claim pipeline execution
+POST
+/process-batch
+Array of ClaimContext
+Array of FinalOutput
+Concurrent batch execution
+GET
+/health
+None
+{ status: 'ok' }
+Health check for frontend polling
+22.2  Next.js API Route (Proxy)
+The Next.js app does not call the FastAPI backend directly from the browser. Instead, a Next.js API route (/app/api/process-claim/route.ts) acts as a proxy, forwarding requests to the FastAPI server. This keeps the FastAPI URL out of the browser, handles multipart image uploads cleanly server-side, and allows easy environment-based URL switching between local dev and production.
+23. Testing Plan
+23.1  Unit Tests — Per Agent
+Each LlmAgent is tested with a mocked Gemini response returning the expected JSON schema
+Each Gate agent is tested with all branching paths: pass, fail, and edge cases
+Pydantic schema validation tested with valid, invalid, and partial inputs
+image_handler.py tested with URL success, URL timeout, file upload, and null input
+23.2  Integration Tests — Full Pipeline
+The five sample claims from v1.0 are the canonical integration test suite. Each test runs the full ADK pipeline with real Gemini API calls and asserts on the expected output fields.
+Claim
+Scenario
+Expected Status
+Key Assertion
+C1
+Clean approval — comprehensive, zero past claims, complete docs, minor damage
+Approved
+final_payout = ₹19,500; confidence ≥ 0.80
+C2
+Fraud rejection — 5 past claims + ₹75,000 for minor scratch
+Rejected
+fraud_score ≥ 0.60; fraud_flags contains past_claims_exceeded
+C3
+Policy rejection — Third-Party policy, own damage claim
+Rejected
+coverage_valid = False; reason mentions third-party policy
+C4
+Image mismatch — text says minor dent, image shows major crumple + airbag
+Pending
+image_text_match = False; confidence ≤ 0.70
+C5
+Missing documents — comprehensive policy but documents = Missing
+Rejected
+coverage_valid = False; reason mentions documentation
+PART G
+Non-Functional Requirements & Enhancements
+ADK-specific NFR implementations and enhancement roadmap
+24. NFR Implementation in ADK Stack
+NFR ID
+Requirement
+ADK/Python Implementation
+NFR-01
+Pipeline completes in < 30 seconds per claim
+Gemini 2.5 Flash is optimized for speed; ParallelAgent halves Gate B latency by running Agents 2+3 simultaneously
+NFR-02
+Minimum 2 retries per agent on timeout
+retry decorator in utils/retry.py; wraps each LlmAgent's _run_async_impl; exponential backoff 1s, 2s
+NFR-03
+Safe default on malformed JSON output
+safe_parse() utility returns typed default on parse failure; logs raw output; pipeline never halts
+NFR-04
+API keys stored securely
+GEMINI_API_KEY stored in .env file; loaded via python-dotenv; never appears in prompts or logs
+NFR-05
+Human-readable Reason field in every output
+Log Aggregator assembles Reason from the gate that fired; always non-null
+NFR-06
+Prompts editable without rewiring
+All prompts in prompts/prompts.py as named string constants; changing a prompt requires no agent config change
+NFR-09
+All agent outputs in Workflow Log
+Log Aggregator reads all agent output keys from session.state and nests them in WorkflowLog
+NFR-10
+Token spend ≤ 5,000 per claim
+Gemini 2.5 Flash is token-efficient; system prompts are concise; inputs are filtered to only relevant fields per agent
+25. Enhancements (Mapped from v1.0 to ADK Stack)
+25.1  Human-in-the-Loop for Medium Confidence Claims
+Claims where confidence_score falls in the 0.60–0.80 band (Medium) are surfaced in the Next.js dashboard with a distinct 'Needs Review' visual state. The API response includes a human_review_recommended boolean field set by the Log Aggregator. The frontend shows a prominent review banner on the detail page. No separate Airtable table needed — this is handled in the dashboard filter.
+25.2  Batch Summary Report
+After a batch run completes, the Next.js dashboard computes and displays a summary panel: total claims processed, count by status (Approved/Rejected/Pending), average confidence score, total payout exposure (sum of all approved final_payout values), and count of fraud rejections. This is computed client-side from the batch results array — no additional API call needed.
+25.3  Multi-language Customer Messages (Agent 6)
+A 'preferred_language' field can be added to the ClaimContext with values like 'English', 'Hindi', 'Tamil'. The Agent 6 system prompt includes a conditional instruction to generate the message in the specified language. The Next.js form includes a language selector dropdown. This requires no architectural change to the ADK pipeline.
+25.4  Workflow Visualization in Next.js
+The per-claim detail page renders a live workflow diagram using a lightweight graph component (e.g., React Flow). Nodes correspond to each pipeline step; edges show the execution path taken for that specific claim. Nodes that were skipped (due to early exit at a gate) are rendered in a muted/dashed style. This is the ADK equivalent of exporting the Flowise canvas as a visual deliverable.
+PART H
+Dependency List & Environment Setup
+All packages, versions, and configuration requirements
+26. Backend Dependencies
+Package
+Purpose
+Notes
+google-adk
+Core agent orchestration framework
+Install via pip; requires Python 3.10+
+google-generativeai
+Gemini API SDK
+Bundled with google-adk; handles all Gemini calls
+fastapi
+REST API server
+Exposes /process-claim and /process-batch
+uvicorn
+ASGI server for FastAPI
+Run with --reload in development
+pydantic v2
+Schema validation and serialization
+All ClaimContext and agent output models
+python-dotenv
+Environment variable loading
+Loads GEMINI_API_KEY from .env
+Pillow
+Image format validation and conversion
+Used in image_handler.py
+httpx
+Async HTTP client for image URL fetching
+Replaces requests for async compatibility
+pytest + pytest-asyncio
+Unit and integration testing
+All pipeline tests are async
+python-multipart
+Multipart form data parsing in FastAPI
+Required for image file upload endpoint
+27. Frontend Dependencies
+Package
+Purpose
+Notes
+Next.js 14 (App Router)
+React framework with API routes
+App Router for /app directory structure
+TypeScript
+Type safety mirroring Pydantic schemas
+Strict mode enabled
+Tailwind CSS
+Utility-first styling
+For all UI components
+shadcn/ui
+Component library (forms, badges, accordions)
+Built on Radix UI primitives
+Zod
+Client-side form validation
+Schema mirrors backend Pydantic model
+React Hook Form
+Form state management
+Integrates with Zod resolver
+React Flow
+Workflow visualization diagram
+For agent pipeline visualization on detail page
+Lucide React
+Icon set
+Status icons, agent step icons
+28. Environment Configuration
+Required Environment Variables (backend/.env)
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-2.5-flash-preview-05-20
+MAX_RETRIES=2
+IMAGE_MAX_SIZE_MB=5
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+Required Environment Variables (frontend/.env.local)
+NEXT_PUBLIC_API_URL=http://localhost:8000   (points to FastAPI server)
+End of Document
+AI Build Sprint — Goal-to-Multi-Agent Insurance Claim Orchestrator — ADK Build Plan v2.0
