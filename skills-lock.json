@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "adk-cheatsheet": {
+      "source": "google/adk-docs",
+      "sourceType": "github",
+      "computedHash": "dcaba0eafbbc1c492277b6bf5553c3841f2f9d2f8666a2b5ea8e3f7826f2ba96"
+    }
+  }
+}

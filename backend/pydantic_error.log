@@ -1,0 +1,202 @@
+--- Sub Exception ---
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\kauti\OneDrive\Desktop\hackathon\backend\test_runner.py", line 14, in test
+  |     await process_claim_async({'test':'data'}, None)
+  |   File "C:\Users\kauti\OneDrive\Desktop\hackathon\backend\pipeline\runner.py", line 29, in process_claim_async
+  |     async for event in runner.run_async(
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\runners.py", line 632, in run_async
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\runners.py", line 617, in _run_with_trace
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\runners.py", line 853, in _exec_with_plugin
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\runners.py", line 606, in execute
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\base_agent.py", line 297, in run_async
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\sequential_agent.py", line 78, in _run_async_impl
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\base_agent.py", line 297, in run_async
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\parallel_agent.py", line 192, in _run_async_impl
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\parallel_agent.py", line 71, in _merge_agent_run
+  |     async with asyncio.TaskGroup() as tg:
+  |                ^^^^^^^^^^^^^^^^^^^
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\asyncio\taskgroups.py", line 71, in __aexit__
+  |     return await self._aexit(et, exc)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\asyncio\taskgroups.py", line 164, in _aexit
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (2 sub-exceptions)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\parallel_agent.py", line 62, in process_an_agent
+    |     async for event in events_for_one_agent:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\base_agent.py", line 297, in run_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\llm_agent.py", line 487, in _run_async_impl
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 803, in run_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 880, in _run_one_step_async
+    |     async for llm_response in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1251, in _call_llm_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1159, in _call_llm_with_tracing
+    |     if response := await self._handle_before_model_callback(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1281, in _handle_before_model_callback
+    |     return await _handle_before_model_callback(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 230, in _handle_before_model_callback
+    |     callback_response = await callback_response
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\OneDrive\Desktop\hackathon\backend\utils\skip_guard.py", line 11, in skip_guard
+    |     return LlmResponse(text="{}")
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\main.py", line 250, in __init__
+    |     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | pydantic_core._pydantic_core.ValidationError: 1 validation error for LlmResponse
+    | text
+    |   Extra inputs are not permitted [type=extra_forbidden, input_value='{}', input_type=str]
+    |     For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+    +---------------- 2 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\parallel_agent.py", line 62, in process_an_agent
+    |     async for event in events_for_one_agent:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\base_agent.py", line 297, in run_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\llm_agent.py", line 487, in _run_async_impl
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 803, in run_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 880, in _run_one_step_async
+    |     async for llm_response in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1251, in _call_llm_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1159, in _call_llm_with_tracing
+    |     if response := await self._handle_before_model_callback(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1281, in _handle_before_model_callback
+    |     return await _handle_before_model_callback(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 230, in _handle_before_model_callback
+    |     callback_response = await callback_response
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\OneDrive\Desktop\hackathon\backend\utils\skip_guard.py", line 11, in skip_guard
+    |     return LlmResponse(text="{}")
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\main.py", line 250, in __init__
+    |     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | pydantic_core._pydantic_core.ValidationError: 1 validation error for LlmResponse
+    | text
+    |   Extra inputs are not permitted [type=extra_forbidden, input_value='{}', input_type=str]
+    |     For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+    +------------------------------------
+
+PYDANTIC ERRORS: [{'type': 'extra_forbidden', 'loc': ('text',), 'msg': 'Extra inputs are not permitted', 'input': '{}', 'url': 'https://errors.pydantic.dev/2.12/v/extra_forbidden'}]
+MODEL CAUSING ERROR: LlmResponse
+--- Sub Exception ---
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\kauti\OneDrive\Desktop\hackathon\backend\test_runner.py", line 14, in test
+  |     await process_claim_async({'test':'data'}, None)
+  |   File "C:\Users\kauti\OneDrive\Desktop\hackathon\backend\pipeline\runner.py", line 29, in process_claim_async
+  |     async for event in runner.run_async(
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\runners.py", line 632, in run_async
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\runners.py", line 617, in _run_with_trace
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\runners.py", line 853, in _exec_with_plugin
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\runners.py", line 606, in execute
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\base_agent.py", line 297, in run_async
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\sequential_agent.py", line 78, in _run_async_impl
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\base_agent.py", line 297, in run_async
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\parallel_agent.py", line 192, in _run_async_impl
+  |     async for event in agen:
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\parallel_agent.py", line 71, in _merge_agent_run
+  |     async with asyncio.TaskGroup() as tg:
+  |                ^^^^^^^^^^^^^^^^^^^
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\asyncio\taskgroups.py", line 71, in __aexit__
+  |     return await self._aexit(et, exc)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\asyncio\taskgroups.py", line 164, in _aexit
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (2 sub-exceptions)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\parallel_agent.py", line 62, in process_an_agent
+    |     async for event in events_for_one_agent:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\base_agent.py", line 297, in run_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\llm_agent.py", line 487, in _run_async_impl
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 803, in run_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 880, in _run_one_step_async
+    |     async for llm_response in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1251, in _call_llm_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1159, in _call_llm_with_tracing
+    |     if response := await self._handle_before_model_callback(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1281, in _handle_before_model_callback
+    |     return await _handle_before_model_callback(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 230, in _handle_before_model_callback
+    |     callback_response = await callback_response
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\OneDrive\Desktop\hackathon\backend\utils\skip_guard.py", line 11, in skip_guard
+    |     return LlmResponse(text="{}")
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\main.py", line 250, in __init__
+    |     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | pydantic_core._pydantic_core.ValidationError: 1 validation error for LlmResponse
+    | text
+    |   Extra inputs are not permitted [type=extra_forbidden, input_value='{}', input_type=str]
+    |     For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+    +---------------- 2 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\parallel_agent.py", line 62, in process_an_agent
+    |     async for event in events_for_one_agent:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\base_agent.py", line 297, in run_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\agents\llm_agent.py", line 487, in _run_async_impl
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 803, in run_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 880, in _run_one_step_async
+    |     async for llm_response in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1251, in _call_llm_async
+    |     async for event in agen:
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1159, in _call_llm_with_tracing
+    |     if response := await self._handle_before_model_callback(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 1281, in _handle_before_model_callback
+    |     return await _handle_before_model_callback(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\google\adk\flows\llm_flows\base_llm_flow.py", line 230, in _handle_before_model_callback
+    |     callback_response = await callback_response
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\OneDrive\Desktop\hackathon\backend\utils\skip_guard.py", line 11, in skip_guard
+    |     return LlmResponse(text="{}")
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\kauti\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\main.py", line 250, in __init__
+    |     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | pydantic_core._pydantic_core.ValidationError: 1 validation error for LlmResponse
+    | text
+    |   Extra inputs are not permitted [type=extra_forbidden, input_value='{}', input_type=str]
+    |     For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+    +------------------------------------
+
+PYDANTIC ERRORS: [{'type': 'extra_forbidden', 'loc': ('text',), 'msg': 'Extra inputs are not permitted', 'input': '{}', 'url': 'https://errors.pydantic.dev/2.12/v/extra_forbidden'}]
+MODEL CAUSING ERROR: LlmResponse

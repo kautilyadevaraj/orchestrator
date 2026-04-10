@@ -1,0 +1,1 @@
+['model_version', 'content', 'grounding_metadata', 'partial', 'turn_complete', 'finish_reason', 'error_code', 'error_message', 'interrupted', 'custom_metadata', 'usage_metadata', 'live_session_resumption_update', 'go_away', 'input_transcription', 'output_transcription', 'avg_logprobs', 'logprobs_result', 'cache_metadata', 'citation_metadata', 'interaction_id']

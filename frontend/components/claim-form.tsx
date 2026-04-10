@@ -99,10 +99,10 @@ export function ClaimForm() {
       context.image_url = null;
     }
     try {
-      await addClaim(context, preview, 950);
+      await addClaim(context, preview, file);
       router.push(`/results/${encodeURIComponent(context.claim_id)}`);
     } catch {
-      show("Something went wrong during the mock run.", "error");
+      show("Something went wrong during the claim processing run.", "error");
     }
   });
 

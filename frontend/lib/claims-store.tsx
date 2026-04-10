@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { ClaimContext, ClaimRecord, FinalOutput } from "@/lib/types";
-import { buildMockFinalOutput, delay } from "@/lib/mock-pipeline";
+import { mapBackendResponseToFinalOutput } from "@/lib/api-mapper";
 
 interface ClaimsState {
   claims: ClaimRecord[];
@@ -32,7 +32,7 @@ interface ClaimsContextValue extends ClaimsState {
   addClaim: (
     context: ClaimContext,
     imagePreviewUrl: string | null,
-    simulateMs?: number
+    file: File | null
   ) => Promise<FinalOutput>;
   addBatch: (
     items: { context: ClaimContext; imagePreviewUrl: string | null }[],
@@ -81,10 +81,28 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     async (
       context: ClaimContext,
       imagePreviewUrl: string | null,
-      simulateMs = 900
+      file: File | null
     ) => {
-      await delay(simulateMs);
-      const result = buildMockFinalOutput(context, imagePreviewUrl);
+      const start = Date.now();
+      const formData = new FormData();
+      formData.append("claim_data", JSON.stringify(context));
+      if (file) {
+        formData.append("image", file);
+      }
+
+      const res = await fetch("/api/process-claim", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+
+      const backendRes = await res.json();
+      const processingTime = Date.now() - start;
+      const result = mapBackendResponseToFinalOutput(backendRes, context, imagePreviewUrl, processingTime);
+
       const record: ClaimRecord = {
         context,
         result,
@@ -96,6 +114,8 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // Note: addBatch uses the mock implementation fallback for now unless batch route is provided
+  // But we can just iterate the fetch
   const addBatch = useCallback(
     async (
       items: { context: ClaimContext; imagePreviewUrl: string | null }[],
@@ -105,11 +125,23 @@ export function ClaimsProvider({ children }: { children: ReactNode }) {
       const records: ClaimRecord[] = [];
       const submittedAt = new Date().toISOString();
       for (let i = 0; i < items.length; i++) {
-        await delay(350 + (i % 3) * 120);
-        const result = buildMockFinalOutput(
-          items[i].context,
-          items[i].imagePreviewUrl
-        );
+        const start = Date.now();
+        const formData = new FormData();
+        formData.append("claim_data", JSON.stringify(items[i].context));
+        
+        const res = await fetch("/api/process-claim", {
+          method: "POST",
+          body: formData,
+        });
+        
+        if (!res.ok) {
+           throw new Error("Batch processing failed at claim " + items[i].context.claim_id);
+        }
+        
+        const backendRes = await res.json();
+        const processingTime = Date.now() - start;
+        const result = mapBackendResponseToFinalOutput(backendRes, items[i].context, items[i].imagePreviewUrl, processingTime);
+        
         out.push(result);
         records.push({ context: items[i].context, result, submittedAt });
         onProgress?.(i, result);
