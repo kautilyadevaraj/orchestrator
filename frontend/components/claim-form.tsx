@@ -147,7 +147,7 @@ export function ClaimForm() {
               size="sm"
               disabled={busy}
               onClick={newId}
-              className="shrink-0"
+              className="h-10 shrink-0"
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden />
               Generate ID
@@ -241,7 +241,7 @@ export function ClaimForm() {
             <Label>Documents</Label>
             <select
               disabled={busy}
-              className="h-10 w-full max-w-xs rounded-lg border border-border bg-surface-elevated px-3 text-sm shadow-sm transition-[border-color] duration-200 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/25"
+              className="h-10 w-full rounded-lg border border-border bg-surface-elevated px-3 text-sm shadow-sm transition-[border-color] duration-200 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/25"
               {...form.register("documents_status")}
             >
               <option value="Complete">Complete</option>
@@ -254,7 +254,7 @@ export function ClaimForm() {
             <select
               id="preferred_language"
               disabled={busy}
-              className="h-10 w-full max-w-xs rounded-lg border border-border bg-surface-elevated px-3 text-sm shadow-sm"
+              className="h-10 w-full rounded-lg border border-border bg-surface-elevated px-3 text-sm shadow-sm"
               {...form.register("preferred_language")}
             >
               <option value="English">English</option>

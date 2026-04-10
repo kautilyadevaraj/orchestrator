@@ -5,7 +5,7 @@ export default function SubmitPage() {
     <div className="min-h-[calc(100vh-6.5rem)] grid place-items-center py-8">
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="text-center">
-          <h1 className="font-display text-3xl font-semibold tracking-[-0.03em] text-ink">
+          <h1 className="font-display text-3xl font-medium tracking-[-0.03em] text-ink">
             Claim submission
           </h1>
           <p className="mt-2 text-sm text-ink-muted">
