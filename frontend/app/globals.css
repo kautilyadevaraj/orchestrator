@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Gilroy (preferred). If you have Gilroy installed locally, this will pick it up.
+   To ship Gilroy on the web, place WOFF2 files in `public/fonts/` and add url() sources here. */
+@font-face {
+  font-family: "Gilroy";
+  src: local("Gilroy-Regular"), local("Gilroy Regular"), local("Gilroy");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gilroy";
+  src: local("Gilroy-Medium"), local("Gilroy Medium"), local("Gilroy");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gilroy";
+  src: local("Gilroy-SemiBold"), local("Gilroy Semibold"), local("Gilroy");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gilroy";
+  src: local("Gilroy-Bold"), local("Gilroy Bold"), local("Gilroy");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Timepos Headline (serif headline). Uses local() unless you provide files. */
+@font-face {
+  font-family: "Timepos Headline";
+  src: local("Timepos Headline"), local("TimeposHeadline"), local("Timepos");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Timepos Headline";
+  src: local("Timepos Headline Italic"), local("TimeposHeadline Italic"), local("Timepos Italic");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+:root {
+  /* Warm paper + forest palette (reference-driven) */
+  --surface: 48 26% 94%;
+  --surface-muted: 45 22% 90%;
+  --surface-elevated: 48 36% 97%;
+  --ink: 162 30% 10%;
+  --ink-muted: 160 10% 32%;
+  --accent: 142 56% 28%;
+  --accent-fg: 48 36% 97%;
+  --border: 44 14% 82%;
+  --status-approved: 150 50% 32%;
+  --status-rejected: 0 55% 42%;
+  --status-pending: 34 92% 44%;
+  --hero: 164 44% 10%;
+  --trust-end: 162 32% 38%; /* #43816E */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: 164 32% 8%;
+    --surface-muted: 164 26% 10%;
+    --surface-elevated: 164 24% 12%;
+    --ink: 48 32% 95%;
+    --ink-muted: 45 14% 78%;
+    --accent: 142 50% 44%;
+    --accent-fg: 164 32% 8%;
+    --border: 162 18% 18%;
+    --status-approved: 150 45% 46%;
+    --status-rejected: 0 55% 58%;
+    --status-pending: 34 90% 56%;
+    --hero: 164 32% 8%;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-surface text-ink antialiased;
+}
+
+/* Brand background textures */
+.hero-bg {
+  background:
+    linear-gradient(
+      to top,
+      #43816E 0%,
+      #43816E 22%,
+      hsl(var(--hero)) 78%,
+      hsl(var(--hero)) 100%
+    );
+}
+
+.trust-gradient {
+  background-image: linear-gradient(90deg, #0FEC60, #43816E);
+}
+
+/* Skeleton shimmer uses a pseudo-element */
+@layer utilities {
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg bg-surface-muted/70;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus visible for keyboard users */
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-accent;
+}
